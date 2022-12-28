@@ -1,0 +1,57 @@
+version: '3.9'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: ./deploy/Dockerfile
+    image: TuserDuser:${TUSERDUSER_VERSION:-latest}
+    restart: always
+    env_file:
+    - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TUSERDUSER_HOST: 0.0.0.0
+      TUSERDUSER_DB_HOST: TuserDuser-db
+      TUSERDUSER_DB_PORT: 5432
+      TUSERDUSER_DB_USER: TuserDuser
+      TUSERDUSER_DB_PASS: TuserDuser
+      TUSERDUSER_DB_BASE: TuserDuser
+
+  db:
+    image: postgres:13.8-bullseye
+    hostname: TuserDuser-db
+    environment:
+      POSTGRES_PASSWORD: "TuserDuser"
+      POSTGRES_USER: "TuserDuser"
+      POSTGRES_DB: "TuserDuser"
+    volumes:
+    - TuserDuser-db-data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: pg_isready -U TuserDuser
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  migrator:
+    image: TuserDuser:${TUSERDUSER_VERSION:-latest}
+    restart: "no"
+    command: alembic upgrade head
+    environment:
+      TUSERDUSER_DB_HOST: TuserDuser-db
+      TUSERDUSER_DB_PORT: 5432
+      TUSERDUSER_DB_USER: TuserDuser
+      TUSERDUSER_DB_PASS: TuserDuser
+      TUSERDUSER_DB_BASE: TuserDuser
+    depends_on:
+      db:
+        condition: service_healthy
+
+
+
+volumes:
+  TuserDuser-db-data:
+    name: TuserDuser-db-data
